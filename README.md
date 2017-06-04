@@ -1,10 +1,11 @@
 # minilog
 
-File Based Log Golang Package, Power by Go Routine 'n' Channel Buffer, Rotate daily, Custom level, etc.
+File Based Log Golang Package, Power by Go Routine 'n' Channel Buffer, 
+Rotate daily, Custom level, etc.
 
 ## Sample
 
-sample.go
+**sample.go**
 
 ```golang
 package main
@@ -36,8 +37,8 @@ func main(){
 2017-06-04 16:47:57 [INFO] Some Normal Infomartion
 2017-06-04 16:47:57 [ACES] Some One Reuqest My Server
 2017-06-04 16:47:57 [ERRO] Trigger Some Error
-2017-06-04 16:47:57 [DEBG] For Debug with Filename and Line Number [/a/main.go:16]
-2017-06-04 16:47:57 [FATL] Wow, Dangerous!, also with Filename and Line Number [/a/main.go:17]
+2017-06-04 16:47:57 [DEBG] For Debug with Filename and Line Number [/a/sample.go:16]
+2017-06-04 16:47:57 [FATL] Wow, Dangerous!, also with Filename and Line Number [/a/sample.go:17]
 2017-06-04 16:47:58 [SomeLevel] Custom Level log record
 ```
 **./logs/hiserror.2017-06-04.log**
