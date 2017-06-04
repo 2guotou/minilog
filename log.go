@@ -1,4 +1,4 @@
-package main
+package minilog
 
 import (
 	"fmt"
@@ -111,4 +111,16 @@ func (l *Logger) flush() {
 		}
 		fmt.Fprintf(l.Writer, "%s %s [%s] %s\n", lt.date, lt.time, lt.level, lt.text)
 	}
+}
+
+func inStringArray(arr []string, dst string) (bool, int) {
+	if len(arr) == 0 {
+		return false, -1
+	}
+	for i, v := range arr {
+		if v == dst {
+			return true, i
+		}
+	}
+	return false, -1
 }
