@@ -20,7 +20,7 @@ func main(){
     mylog = minilog.NewLogger("./logs/", "myerror", 5000)//with 5k buffer
     hislog = minilog.NewLogger("./logs/", "hiserror", 10)//with 10 buffer
 
-    mylog.setWlnfl("FATL", "DEBG") //keep `Filename:LineNumber` info for FATAL\DEBG level
+    mylog.WithFileLine("FATL", "DEBG") //keep `Filename:LineNumber` info for FATAL\DEBG level
 
     mylog.Info("Some Normal Infomartion")
     mylog.Access("Some One Reuqest My Server")

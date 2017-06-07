@@ -46,7 +46,7 @@ func NewLogger(dir string, filename string, bufferSize int64) (l Logger) {
 	return
 }
 
-func (l *Logger) SetWlnfl(sets ...string) {
+func (l *Logger) WithFileLine(sets ...string) {
 	l.wlnfl = sets
 }
 
