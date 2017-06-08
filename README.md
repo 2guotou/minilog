@@ -22,7 +22,11 @@ func main(){
 
     mylog.WithFileLine("FATL", "DEBG") //keep `Filename:LineNumber` info for FATAL\DEBG level
 
-    mylog.Info("Some Normal Infomartion")
+    //minilog support 5 built in function for 5 level: Info\Access\Error\Debug\Fatal
+    //built in level : INFO\ACES\EROR\DEBG\FTAL
+    //using `Write` function for custom level
+    
+    mylog.Info("Some Normal Infomartion")z
     mylog.Access("Some One Reuqest My Server")
     mylog.Error("Trigger Some Error")
     mylog.Debug("For Debug with Filename and Line Number")
