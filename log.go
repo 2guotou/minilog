@@ -120,7 +120,7 @@ func (l *Logger) flush() {
 		fmt.Fprintf(l.Writer, "%s %s [%s] %s\n", lt.date, lt.time, lt.level, lt.text)
 		//如果有后续调用则调用该函数
 		if lt.call != nil {
-			lt.call(lt.text, lt.time)
+			lt.call(lt.text, lt.date+" "+lt.time)
 		}
 	}
 }
