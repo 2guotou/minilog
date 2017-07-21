@@ -18,11 +18,14 @@ type Logger struct {
 }
 
 type logtext struct {
-	date  string //日志日期
-	level string //级别
-	time  string //日志时间
-	text  string //日志内容
+	date  string   //日志日期
+	level string   //级别
+	time  string   //日志时间
+	text  string   //日志内容
+	call  callback //回调
 }
+
+type callback func(string, string)
 
 const (
 	logFlag = os.O_CREATE | os.O_WRONLY | os.O_APPEND //日志 创建 只写 追加
@@ -57,7 +60,7 @@ func (l *Logger) getWriter() (writer *os.File, err error) {
 // 将文本内容刷入日志buffer中
 // 写满前为异步操作
 // 写满后则同步堵塞
-func (l *Logger) Write(level, text string) {
+func (l *Logger) Write(level, text string, c callback) {
 	if len(l.wlnfl) > 0 {
 		if ok, _ := inStringArray(l.wlnfl, level); ok {
 			_, f, l, _ := runtime.Caller(2)
@@ -70,27 +73,32 @@ func (l *Logger) Write(level, text string) {
 		time:  t.Format(logTime),
 		level: level,
 		text:  text,
+		call:  c,
 	}
 }
 
 func (l *Logger) Info(text string) {
-	l.Write("INFO", text)
+	l.Write("INFO", text, nil)
 }
 
 func (l *Logger) Error(text string) {
-	l.Write("ERRO", text)
+	l.Write("ERRO", text, nil)
 }
 
 func (l *Logger) Debug(text string) {
-	l.Write("DEBG", text)
+	l.Write("DEBG", text, nil)
 }
 
 func (l *Logger) Fatal(text string) {
-	l.Write("FATL", text)
+	l.Write("FATL", text, nil)
 }
 
 func (l *Logger) Access(text string) {
-	l.Write("ACES", text)
+	l.Write("ACES", text, nil)
+}
+
+func (l *Logger) AccessCall(text string, c callback) {
+	l.Write("ACES", text, c)
 }
 
 // 将buffer里的内容逐次刷入磁盘
@@ -110,6 +118,10 @@ func (l *Logger) flush() {
 			}
 		}
 		fmt.Fprintf(l.Writer, "%s %s [%s] %s\n", lt.date, lt.time, lt.level, lt.text)
+		//如果有后续调用则调用该函数
+		if lt.call != nil {
+			lt.call(lt.text, lt.time)
+		}
 	}
 }
 
