@@ -3,8 +3,8 @@ package minilog
 import (
 	"fmt"
 	"os"
-	"path"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -61,6 +61,13 @@ const (
 
 //EmptyIns ...
 var EmptyIns = []interface{}{}
+var osSeparator = "/"
+
+func init() {
+	if runtime.GOOS == "windows" {
+		osSeparator = "\\"
+	}
+}
 
 //NewLogger 创建一个新的日志记录器
 func NewLogger(dir string, filename string, bufferSize int64) *Logger {
@@ -68,7 +75,7 @@ func NewLogger(dir string, filename string, bufferSize int64) *Logger {
 	l.Date = time.Now().Format(logDate)
 	l.File = filename
 	l.Levels = map[string]*Level{}
-	l.Dir = path.Dir(dir + "/") //确保路径格式正确，避免路径分隔符或多或少
+	l.Dir = strings.TrimRight(dir, osSeparator) + osSeparator //确保路径格式正确，避免路径分隔符或多或少
 	l.Buffer = make(chan logtext, bufferSize)
 	if writer, err := l.getWriter(l.Date, ""); err != nil {
 		panic("日志创建失败：" + err.Error())
@@ -114,7 +121,7 @@ func (l *Logger) getWriter(date, level string) (writer *os.File, err error) {
 	if level != "" {
 		level = "." + level
 	}
-	logfile := fmt.Sprintf("%s/%s.%s%s.log", l.Dir, l.File, date, level)
+	logfile := fmt.Sprintf("%s%s.%s%s.log", l.Dir, l.File, date, level)
 	fmt.Println("minilog: create log, filename=" + logfile)
 	return os.OpenFile(logfile, logFlag, logMode)
 }
