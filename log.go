@@ -278,7 +278,7 @@ func (l *Logger) Close(maxWait int) {
 	for i := 0; i < maxWait && len(l.Buffer) > 0; i++ {
 		time.Sleep(time.Millisecond)
 	}
-	//发送结束信息, 随机堵塞等待真实关闭的信号
+	//发送结束信息, 随即堵塞等待真实关闭的信号
 	l.close <- true
 	<-l.close
 }
