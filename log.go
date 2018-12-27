@@ -30,6 +30,7 @@ type Logger struct {
 	Buffer   chan logtext //日志的缓冲通道
 	Levels   map[string]*Level
 	Callback callback
+	close    chan bool //关闭指令
 }
 
 //Level 日志层级
@@ -77,6 +78,7 @@ func NewLogger(dir string, filename string, bufferSize int64) *Logger {
 	l.Levels = map[string]*Level{}
 	l.Dir = strings.TrimRight(dir, osSeparator) + osSeparator //确保路径格式正确，避免路径分隔符或多或少
 	l.Buffer = make(chan logtext, bufferSize)
+	l.close = make(chan bool)
 	if writer, err := l.getWriter(l.Date, ""); err != nil {
 		panic("日志创建失败：" + err.Error())
 	} else {
@@ -191,63 +193,92 @@ func (l *Logger) AccessCall(text string, c callback) {
 	l.Write(LevelAccess, text, EmptyIns, c)
 }
 
-// 将buffer里的内容逐次刷入磁盘
+//获取 buffer 中的数据, 并根据 close channel 决定是否退出
 func (l *Logger) flush() {
-	var levelSetting *Level
-	var exist bool
-	//日志刷入操作
-	for {
-		lt := <-l.Buffer
 
-		//=======================[层级日志操作]==========================
-		levelSetting, exist = l.Levels[lt.level]
-		if exist && levelSetting.Individual {
-
-			if lt.date != levelSetting.Date || levelSetting.Writer == nil {
-				levelSetting.Date = lt.date
-				if writer, err := l.getWriter(levelSetting.Date, lt.level); err == nil {
-					levelSetting.Writer.Close()
-					levelSetting.Writer = writer
-				} else {
-					fmt.Println("minilog: create log file faild, err=" + err.Error())
-				}
-			}
-			if levelSetting.Writer != nil {
-				fmt.Fprintf(levelSetting.Writer, "%s %s [%s] %s\n", lt.date, lt.time, lt.level, lt.text)
-			}
-
-			if !levelSetting.Duplicate {
-				//Duplication 依赖于 Individual==true !!!!
-				//如果有后续调用则调用该函数
-				if lt.call != nil {
-					lt.call(lt.text, lt.date+" "+lt.time)
-				}
-				continue //不需要在母体日志中冗余, 则跳过后续环节
-			}
+	defer func() {
+		l.Writer.Close()
+		for _, level := range l.Levels {
+			level.Writer.Close()
 		}
+		l.close <- true
+	}()
 
-		//=======================[母体日志操作]===========================
-		//每次写入前判断一下日期是否一致，不一致则创建新日志文件
-		if lt.date != l.Date {
-			l.Date = lt.date
-			if writer, err := l.getWriter(l.Date, ""); err == nil {
-				l.Writer.Close()
-				l.Writer = writer
+	for {
+		select {
+		case <-l.close:
+			return
+		case lt := <-l.Buffer:
+			l.flushing(lt)
+		}
+	}
+}
+
+// 将buffer里的内容逐次刷入磁盘
+func (l *Logger) flushing(lt logtext) {
+	//=======================[层级日志操作]==========================
+	levelSetting, exist := l.Levels[lt.level]
+	if exist && levelSetting.Individual {
+
+		if lt.date != levelSetting.Date || levelSetting.Writer == nil {
+			levelSetting.Date = lt.date
+			if writer, err := l.getWriter(levelSetting.Date, lt.level); err == nil {
+				levelSetting.Writer.Close()
+				levelSetting.Writer = writer
 			} else {
 				fmt.Println("minilog: create log file faild, err=" + err.Error())
 			}
 		}
-		if l.Writer != nil {
-			if lt.dry {
-				fmt.Fprintf(l.Writer, "%s\n", lt.text)
-			} else {
-				fmt.Fprintf(l.Writer, "%s %s [%s] %s\n", lt.date, lt.time, lt.level, lt.text)
-			}
+		if levelSetting.Writer != nil {
+			fmt.Fprintf(levelSetting.Writer, "%s %s [%s] %s\n", lt.date, lt.time, lt.level, lt.text)
 		}
 
-		//如果有后续调用则调用该函数
-		if lt.call != nil {
-			lt.call(lt.text, lt.date+" "+lt.time)
+		if !levelSetting.Duplicate {
+			//Duplication 依赖于 Individual==true !!!!
+			//如果有后续调用则调用该函数
+			if lt.call != nil {
+				lt.call(lt.text, lt.date+" "+lt.time)
+			}
+			//如果有后续调用则调用该函数
+			if lt.call != nil {
+				lt.call(lt.text, lt.date+" "+lt.time)
+			}
+			return //不需要在母体日志中冗余, 则跳过后续环节
 		}
 	}
+
+	//=======================[母体日志操作]===========================
+	//每次写入前判断一下日期是否一致，不一致则创建新日志文件
+	if lt.date != l.Date {
+		l.Date = lt.date
+		if writer, err := l.getWriter(l.Date, ""); err == nil {
+			l.Writer.Close()
+			l.Writer = writer
+		} else {
+			fmt.Println("minilog: create log file faild, err=" + err.Error())
+		}
+	}
+	if l.Writer != nil {
+		if lt.dry {
+			fmt.Fprintf(l.Writer, "%s\n", lt.text)
+		} else {
+			fmt.Fprintf(l.Writer, "%s %s [%s] %s\n", lt.date, lt.time, lt.level, lt.text)
+		}
+	}
+
+	//如果有后续调用则调用该函数
+	if lt.call != nil {
+		lt.call(lt.text, lt.date+" "+lt.time)
+	}
+}
+
+// Close 关闭日志, 尽可能将消息落地
+// maxWait 最多等待的毫秒数(不严格的接近1毫秒)
+func (l *Logger) Close(maxWait int) {
+	for i := 0; i < maxWait && len(l.Buffer) > 0; i++ {
+		time.Sleep(time.Millisecond)
+	}
+	//发送结束信息, 随机堵塞等待真实关闭的信号
+	l.close <- true
+	<-l.close
 }
